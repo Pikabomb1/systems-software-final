@@ -1,0 +1,98 @@
+version: "3.9"
+
+services:
+  # 1. MAIN CONTAINER (Restored University Image)
+  ntu-vm:
+    container_name: ntu-vm
+    # This is the official image for your module that supports RDP
+    image: pedrombmachado/ntu_lubuntu:comp20081
+    platform: linux/amd64
+    privileged: true
+    environment:
+      - NB_USER=ntu-user
+      - NB_PASSWORD=ntu-user
+      - ROOT_PASSWORD=password
+    ports:
+      # RDP Access (This fixes localhost:3390)
+      - "3390:3389"
+      # SSH Access (For your keygen task)
+      - "2222:22"
+    volumes:
+      - .:/home/ntu-user/cwk
+      # KEEPING your keys so passwordless login still works!
+      - ./id_rsa:/home/ntu-user/.ssh/id_rsa:ro
+    networks:
+      - comp20081_network
+
+  # 2. MYSQL DATABASE
+  comp20081-mysql:
+    container_name: comp20081-mysql
+    image: mysql:8.0
+    platform: linux/amd64
+    restart: always
+    environment:
+      MYSQL_ROOT_PASSWORD: rootpassword
+      MYSQL_DATABASE: comp20081_cloud
+    ports:
+      - "3306:3306"
+    volumes:
+      - ./mysql_data:/var/lib/mysql
+    networks:
+      - comp20081_network
+
+  # 3. FILE STORAGE 1
+  comp20081-files-container1:
+    container_name: comp20081-files-container1
+    image: pedrombmachado/simple-ssh-container:base
+    platform: linux/amd64
+    entrypoint: sh -c "mkdir -p /run/sshd && /usr/sbin/sshd -D"
+    volumes:
+      - ./id_rsa.pub:/root/.ssh/authorized_keys:ro
+    networks:
+      - comp20081_network
+
+  # 4. FILE STORAGE 2
+  comp20081-files-container2:
+    container_name: comp20081-files-container2
+    image: pedrombmachado/simple-ssh-container:base
+    platform: linux/amd64
+    entrypoint: sh -c "mkdir -p /run/sshd && /usr/sbin/sshd -D"
+    volumes:
+      - ./id_rsa.pub:/root/.ssh/authorized_keys:ro
+    networks:
+      - comp20081_network
+
+  # 5. LOAD BALANCER (HAProxy)
+  comp20081-loadbalancer:
+    container_name: comp20081-loadbalancer
+    image: haproxy:alpine
+    volumes:
+      - ./haproxy.cfg:/usr/local/etc/haproxy/haproxy.cfg:ro
+    ports:
+      - "8080:22" # Changed to avoid conflict
+    networks:
+      - comp20081_network
+    depends_on:
+      - comp20081-files-container1
+      - comp20081-files-container2
+
+  # 6. PARTITIONING CONTAINER
+  comp20081-partitioner:
+    container_name: comp20081-partitioner
+    image: alpine:latest
+    command: tail -f /dev/null
+    networks:
+      - comp20081_network
+
+  # 7. SUPPORT HOST
+  comp20081-support-host:
+    container_name: comp20081-support-host
+    image: alpine:latest
+    command: tail -f /dev/null
+    networks:
+      - comp20081_network
+
+networks:
+  comp20081_network:
+
+    driver: bridge
