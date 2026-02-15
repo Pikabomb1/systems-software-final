@@ -70,12 +70,12 @@ public class RegisterController {
     }
 
     private void dialogue(String headerMsg, String contentMsg) {
-        // Note: Creating a new Stage/Group here is technically unnecessary for a standard Alert,
-        // but keeping it to preserve your original style.
+        
+        
         Stage secondaryStage = new Stage();
         Group root = new Group();
         Scene scene = new Scene(root, 300, 300, Color.DARKGRAY);
-        Alert alert = new Alert(Alert.AlertType.INFORMATION); // Changed to INFORMATION for success
+        Alert alert = new Alert(Alert.AlertType.INFORMATION); 
         alert.setTitle("Notification");
         alert.setHeaderText(headerMsg);
         alert.setContentText(contentMsg);
