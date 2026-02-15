@@ -63,14 +63,14 @@ public class PrimaryController {
     @FXML
     private void switchToSecondary() {
         Stage secondaryStage = new Stage();
-        // We use the registerBtn to get the current scene window
+        //  use the registerBtn to get the current scene window
         Stage primaryStage = (Stage) registerBtn.getScene().getWindow();
         
         try {
             DB myObj = new DB();
             
-            // UPDATE 1: Use login() instead of validateUser()
-            // This verifies the user against MySQL and creates a Session in SQLite
+            // Verifies the user against MySQL and creates a Session in SQLite
+            
             if(myObj.login(userTextField.getText(), passPasswordField.getText())){
                 FXMLLoader loader = new FXMLLoader();
                 loader.setLocation(getClass().getResource("secondary.fxml"));
@@ -78,8 +78,8 @@ public class PrimaryController {
                 Scene scene = new Scene(root, 640, 480);
                 secondaryStage.setScene(scene);
                 
-                // UPDATE 2: We removed the lines that passed credentials manually 
-                // (controller.initialise) because the Session handles it now.
+                // Session is handled automatically by DB.createLocalSession()
+                
                 
                 secondaryStage.setTitle("Show Users");
                 secondaryStage.show();
