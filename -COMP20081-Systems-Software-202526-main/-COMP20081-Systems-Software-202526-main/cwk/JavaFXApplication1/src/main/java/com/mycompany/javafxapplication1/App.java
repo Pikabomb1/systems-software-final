@@ -16,11 +16,11 @@ public class App extends Application {
 
     @Override
     public void start(Stage stage) throws IOException {
-        // 1. Initialize DB tables (The constructor now handles creation automatically)
+        // 1. Initialize DB tables 
         new DB(); 
 
-        // 2. Load the Primary (Login) View
-        // We use the 'stage' passed by JavaFX, rather than creating a new 'secondaryStage'
+        // Load the Primary (Login) View
+        
         scene = new Scene(loadFXML("primary"), 640, 480);
         stage.setScene(scene);
         stage.setTitle("Login");
