@@ -1,10 +1,10 @@
 version: "3.9"
 
 services:
-  # 1. MAIN CONTAINER (Restored University Image)
+  # 1. MAIN CONTAINER 
   ntu-vm:
     container_name: ntu-vm
-    # This is the official image for your module that supports RDP
+    
     image: pedrombmachado/ntu_lubuntu:comp20081
     platform: linux/amd64
     privileged: true
@@ -13,13 +13,13 @@ services:
       - NB_PASSWORD=ntu-user
       - ROOT_PASSWORD=password
     ports:
-      # RDP Access (This fixes localhost:3390)
+      # RDP Access 
       - "3390:3389"
-      # SSH Access (For your keygen task)
+      # SSH Access (For the keygen task)
       - "2222:22"
     volumes:
       - .:/home/ntu-user/cwk
-      # KEEPING your keys so passwordless login still works!
+      # KEEPING the keys so passwordless login still works
       - ./id_rsa:/home/ntu-user/.ssh/id_rsa:ro
     networks:
       - comp20081_network
@@ -69,7 +69,7 @@ services:
     volumes:
       - ./haproxy.cfg:/usr/local/etc/haproxy/haproxy.cfg:ro
     ports:
-      - "8080:22" # Changed to avoid conflict
+      - "8080:22" 
     networks:
       - comp20081_network
     depends_on:
@@ -96,3 +96,4 @@ networks:
   comp20081_network:
 
     driver: bridge
+
