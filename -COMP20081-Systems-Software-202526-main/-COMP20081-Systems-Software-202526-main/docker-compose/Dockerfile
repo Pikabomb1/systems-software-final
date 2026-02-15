@@ -1,4 +1,4 @@
-# Use a base image with VNC (Desktop Environment) support
+# Using a base image with VNC (Desktop Environment) support
 FROM dorowu/ubuntu-desktop-lxde-vnc:focal
 
 # --- FIX START ---
@@ -14,14 +14,15 @@ RUN apt-get update && apt-get install -y \
     nano \
     && rm -rf /var/lib/apt/lists/*
 
-# Set up the environment variables matching your docker-compose
+# Set up the environment variables matching the docker-compose
 ENV JAVA_HOME=/usr/lib/jvm/java-17-openjdk-amd64
 ENV PATH=$JAVA_HOME/bin:$PATH
 
 # Create the user 'ntu-user' if it doesn't exist (base image uses root)
-# We map the IDs to avoid permission issues
+# then map the IDs to avoid permission issues
 RUN useradd -m -u 1000 ntu-user || true
 RUN echo "ntu-user:ntu-user" | chpasswd
 
 # Set working directory
+
 WORKDIR /home/ntu-user/cwk
