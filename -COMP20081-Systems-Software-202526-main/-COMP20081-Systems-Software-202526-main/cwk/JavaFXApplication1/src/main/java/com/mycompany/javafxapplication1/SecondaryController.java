@@ -177,7 +177,7 @@ public class SecondaryController implements Initializable {
                     try {
                         // 1. Setup JSch (SSH)
                         JSch jsch = new JSch();
-                        jsch.addIdentity(privateKeyPath); // Use the Key we generated!
+                        jsch.addIdentity(privateKeyPath); // Use the Key that got generated
                         
                         // 2. Connect to Load Balancer (Gateway)
                         session = jsch.getSession(remoteUser, loadBalancerHost, 22);
@@ -186,7 +186,7 @@ public class SecondaryController implements Initializable {
                         System.out.println("Simulating artificial delay (30s)...");
                         Thread.sleep(30000); // 30,000ms = 30 seconds wait
                         
-                        session.connect(); // <--- REAL CONNECTION HAPPENS HERE
+                        session.connect(); // <--- REAL CONNECTION IS HERE
                         
                         Platform.runLater(() -> showLoadingPopup("Connected! Encrypting & Streaming..."));
                         
@@ -212,8 +212,9 @@ public class SecondaryController implements Initializable {
 
                             // Send Real Data to Server
                             // We stream via ByteArrayInputStream directly to the remote file
-                            // Note: In a real split system, we'd name it file.part1, file.part2 etc.
-                            // Here we just append to one file for simplicity of demonstration
+
+
+                            
                             String remoteFileName = selectedFile.getName() + ".enc";
                             sftpChannel.put(new ByteArrayInputStream(encryptedData), remoteFileName, ChannelSftp.APPEND);
                             
