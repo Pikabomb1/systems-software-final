@@ -9,9 +9,9 @@ import javafx.beans.property.SimpleStringProperty;
 public class User {
     private SimpleStringProperty user;
     private SimpleStringProperty pass;
-    private SimpleStringProperty role; // <--- NEW
+    private SimpleStringProperty role; 
 
-    // Updated Constructor
+    // Constructor
     User(String user, String pass, String role) {
         this.user = new SimpleStringProperty(user);
         this.pass = new SimpleStringProperty(pass);
@@ -24,7 +24,7 @@ public class User {
     public String getPass() { return pass.get(); }
     public void setPass(String pass) { this.pass.set(pass); }
 
-    // New Getters/Setters for Role
+    // Getters/Setters for Role
     public String getRole() { return role.get(); }
     public void setRole(String role) { this.role.set(role); }
 }
