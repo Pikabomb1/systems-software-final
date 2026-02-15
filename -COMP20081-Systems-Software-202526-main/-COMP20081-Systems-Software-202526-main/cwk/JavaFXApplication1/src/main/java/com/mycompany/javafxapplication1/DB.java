@@ -96,7 +96,7 @@ public class DB {
         }
     }
 
-    // --- FILE MANAGEMENT (NEW) ---
+    // --- FILE MANAGEMENT  ---
 
     public void addFile(String filename, String owner, String size) {
         try (Connection conn = getRemoteConnection()) {
@@ -170,7 +170,10 @@ public class DB {
 
     // --- USER MANAGEMENT ---
 
-    // Changed return type from 'void' to 'boolean'
+     /**
+     * Registers a new user.
+     * Returns true if successful, false if username exists.
+     */
     public boolean registerUser(String user, String password) {
         try (Connection conn = getRemoteConnection()) {
             // Check if table is empty to assign Admin role
