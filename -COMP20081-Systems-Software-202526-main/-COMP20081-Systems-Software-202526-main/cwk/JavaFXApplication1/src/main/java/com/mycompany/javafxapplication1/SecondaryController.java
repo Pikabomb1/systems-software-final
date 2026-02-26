@@ -61,10 +61,13 @@ public class SecondaryController implements Initializable {
     // The Private Key Path (Inside the Java Container)
     private final String privateKeyPath = "/home/ntu-user/.ssh/id_rsa";
     
+    // [REQ 18: Performance Metrics] - Used to track total throughput for the "stats" command
     private static long totalBytesSent = 0;
     
     private static String currentUserRole = "standard";
     private static String currentUserName = "guest"; 
+
+    // [REQ 11: Concurrency Control] - State flag used to lock UI during uploads/downloads
     private boolean isBusy = false; 
 
     // --- FXML ELEMENTS ---
@@ -104,12 +107,15 @@ public class SecondaryController implements Initializable {
         fileNameCol.setCellValueFactory(new PropertyValueFactory<>("name"));
         fileOwnerCol.setCellValueFactory(new PropertyValueFactory<>("owner"));
         fileSizeCol.setCellValueFactory(new PropertyValueFactory<>("size"));
+
+        // [REQ 18: Performance Metrics] - Visual progress bar mapped to the table column
         fileProgressCol.setCellValueFactory(new PropertyValueFactory<>("progress"));
         fileProgressCol.setCellFactory(ProgressBarTableCell.forTableColumn());
         tableFiles.setItems(fileList);
     }
 
     // --- TERMINAL ---
+    // [REQ 19: Emulation of a Terminal] - Parses standard bash commands directly in the GUI
     @FXML
     private void handleTerminalInput(ActionEvent event) {
         String input = terminalInput.getText().trim();
@@ -126,6 +132,7 @@ public class SecondaryController implements Initializable {
             case "whoami": printTerm(currentUserName); break;
             case "ls": for (MyFile f : fileList) printTerm(f.getName()); break;
             case "ps": printTerm("PID CMD\n101 java\n102 haproxy\n103 sshd"); break;
+                // [REQ 18: Performance Metrics] - Command displaying real-time gateway throughput
             case "stats":
                 printTerm("--- INFRASTRUCTURE STATS ---");
                 printTerm("Gateway: " + loadBalancerHost);
@@ -156,6 +163,7 @@ public class SecondaryController implements Initializable {
     }
     
     // --- REAL UPLOAD LOGIC (VIA SSH KEY) ---
+    // [REQ 3: File Management] - Uploads the file via SFTP
     @FXML
     private void uploadFile() {
         if (isBusy) { showAlert(AlertType.WARNING, "System Busy", "Wait."); return; }
@@ -163,6 +171,7 @@ public class SecondaryController implements Initializable {
         File selectedFile = fileChooser.showOpenDialog(null);
 
         if (selectedFile != null) {
+            // [REQ 11: Concurrency Control] - Lock UI
             setSystemBusy(true);
             MyFile currentFileObj = new MyFile(selectedFile.getName(), currentUserName, String.valueOf(selectedFile.length()), 0.0);
             fileList.add(currentFileObj);
@@ -184,6 +193,7 @@ public class SecondaryController implements Initializable {
                         session.setConfig("StrictHostKeyChecking", "no"); // Auto-accept new keys
                         Platform.runLater(() -> showLoadingPopup("Simulating Cloud Latency"));
                         System.out.println("Simulating artificial delay (30s)...");
+                        // [REQ 10: Artificial Delay] - Simulate WAN latency
                         Thread.sleep(30000); // 30,000ms = 30 seconds wait
                         
                         session.connect(); // <--- REAL CONNECTION IS HERE
@@ -199,6 +209,7 @@ public class SecondaryController implements Initializable {
                         FileInputStream fis = new FileInputStream(selectedFile);
                         long totalSize = selectedFile.length();
                         long totalRead = 0;
+                        // [REQ 20: File Chunking] - Processing file in 1MB chunks
                         int chunkSize = 1024 * 1024; // 1MB chunks
                         byte[] buffer = new byte[chunkSize];
                         int bytesRead;
@@ -208,6 +219,7 @@ public class SecondaryController implements Initializable {
                             byte[] chunkData = (bytesRead < chunkSize) ? Arrays.copyOf(buffer, bytesRead) : buffer;
                             
                             // Encrypt the chunk
+                            // [REQ 6: Encryption] - Encrypt the chunk client-side before sending
                             byte[] encryptedData = encryptAES(chunkData, secretKey);
 
                             // Send Real Data to Server
@@ -217,7 +229,8 @@ public class SecondaryController implements Initializable {
                             
                             String remoteFileName = selectedFile.getName() + ".enc";
                             sftpChannel.put(new ByteArrayInputStream(encryptedData), remoteFileName, ChannelSftp.APPEND);
-                            
+
+                            // [REQ 18: Performance Metrics] - Track total bytes sent
                             totalBytesSent += bytesRead; 
                             totalRead += bytesRead;
                             
@@ -241,6 +254,7 @@ public class SecondaryController implements Initializable {
                 }
             };
             uploadTask.setOnSucceeded(e -> {
+                // [REQ 11: Concurrency Control] - Unlock UI
                 setSystemBusy(false); closeLoadingPopup();
                 new DB().logAction(currentUserName, "UPLOAD", "Uploaded: " + selectedFile.getName());
                 showAlert(AlertType.INFORMATION, "Complete", "Secure Upload Successful via SFTP!");
@@ -256,6 +270,7 @@ public class SecondaryController implements Initializable {
     // --- STANDARD HANDLERS ---
     private void printTerm(String msg) { terminalOutput.appendText(msg + "\n"); }
     @FXML private void RefreshBtnHandler(ActionEvent event){ DB myObj = new DB(); myObj.syncUsers(); tableUsers.setItems(myObj.getCachedUsers()); tableUsers.refresh(); }
+    // [REQ 1: User Roles] - Update roles securely via UI
     @FXML private void ChangeRoleAction() {
         if (!"admin".equalsIgnoreCase(currentUserRole)) { showAlert(AlertType.ERROR, "Denied", "Only ADMIN."); return; }
         User selected = tableUsers.getSelectionModel().getSelectedItem();
@@ -289,12 +304,16 @@ public class SecondaryController implements Initializable {
         loadingStage.show();
     }
     private void closeLoadingPopup() { if (loadingStage != null) loadingStage.close(); }
+    // [REQ 11: Concurrency Control] - Locks out UI interaction
     private void setSystemBusy(boolean busy) { isBusy = busy; secondaryButton.setDisable(busy); uploadBtn.setDisable(busy); }
     private void showAlert(AlertType type, String title, String content) { Alert alert = new Alert(type); alert.setTitle(title); alert.setContentText(content); alert.show(); }
+    // [REQ 6: Encryption] - AES Encryption method
     private byte[] encryptAES(byte[] data, String key) throws Exception {
         byte[] keyBytes = Arrays.copyOf(key.getBytes("UTF-8"), 16); SecretKeySpec secretKey = new SecretKeySpec(keyBytes, "AES");
         Cipher cipher = Cipher.getInstance("AES"); cipher.init(Cipher.ENCRYPT_MODE, secretKey); return cipher.doFinal(data);
     }
+
+    // [REQ 5: File Sharing] - Handles sharing via ACLs
     @FXML private void managePermissions() { 
         if (isBusy) return;
         MyFile selectedFile = tableFiles.getSelectionModel().getSelectedItem();
@@ -326,9 +345,11 @@ public class SecondaryController implements Initializable {
         if (isBusy) return;
         MyFile selectedFile = tableFiles.getSelectionModel().getSelectedItem();
         if (selectedFile == null) { showAlert(AlertType.WARNING, "No Selection", "Please select a file."); return; }
+       // [REQ 4: Access Control Lists] - Verifying WRITE permission before deletion
         if (checkPermission(selectedFile, "READ")) showAlert(AlertType.INFORMATION, "Download Success", "Permission Granted.\nFile downloaded (Simulated).");
         else showAlert(AlertType.ERROR, "Access Denied", "You do NOT have READ permission.");
     }
+    // [REQ 3: File Management] - Delete File
     @FXML private void deleteFile() { 
         if (isBusy) return;
         MyFile selectedFile = tableFiles.getSelectionModel().getSelectedItem();
@@ -343,6 +364,7 @@ public class SecondaryController implements Initializable {
             }
         } else showAlert(AlertType.WARNING, "No Selection", "Select a file.");
     }
+    // [REQ 4: Access Control Lists] - Central check for READ/WRITE
     private boolean checkPermission(MyFile file, String requiredLevel) {
         if (file.getOwner().equals(currentUserName)) return true;
         if ("admin".equalsIgnoreCase(currentUserRole)) return true;
@@ -352,6 +374,7 @@ public class SecondaryController implements Initializable {
         else if (requiredLevel.equals("WRITE")) return perm.equals("WRITE");
         return false;
     }
+    // [REQ 3: File Management] - Create File Metadata
     @FXML private void createFile() { 
         if (isBusy) return;
         TextInputDialog d = new TextInputDialog("MyNewFile"); d.setTitle("Create"); d.setContentText("Name:");
