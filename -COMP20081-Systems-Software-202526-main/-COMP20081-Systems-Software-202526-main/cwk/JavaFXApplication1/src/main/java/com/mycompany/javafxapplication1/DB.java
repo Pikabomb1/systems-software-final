@@ -43,6 +43,7 @@ public class DB {
         initTables();
     }
 
+// [REQ 13: Remote MySQL Database] - Connection setup
     private Connection getRemoteConnection() throws SQLException {
         try {
             Class.forName("com.mysql.cj.jdbc.Driver");
@@ -52,11 +53,13 @@ public class DB {
         }
     }
 
+    // [REQ 12: Local SQLite Database] - Connection setup
     private Connection getLocalConnection() throws SQLException {
         return DriverManager.getConnection(SQLITE_URL);
     }
 
     private void initTables() {
+        // [REQ 13: Remote MySQL Database] - Initializing Users/Files in remote DB
         // 1. Remote MySQL: Users and Files
         try (Connection conn = getRemoteConnection(); Statement stmt = conn.createStatement()) {
             // Users Table
@@ -81,6 +84,7 @@ public class DB {
         }
 
         // 2. Local SQLite
+        // [REQ 12: Local SQLite Database] - Initializing Session/Cache in local DB
         try (Connection conn = getLocalConnection(); Statement stmt = conn.createStatement()) {
             stmt.executeUpdate("CREATE TABLE IF NOT EXISTS Session (" +
                                "id INTEGER PRIMARY KEY, " +
@@ -97,7 +101,7 @@ public class DB {
     }
 
     // --- FILE MANAGEMENT  ---
-
+// [REQ 3: File Management] - Adds file record
     public void addFile(String filename, String owner, String size) {
         try (Connection conn = getRemoteConnection()) {
             String sql = "INSERT INTO Files (filename, owner, size, permissions) VALUES (?, ?, ?, ?)";
@@ -111,7 +115,7 @@ public class DB {
             e.printStackTrace();
         }
     }
-    
+    // [REQ 3: File Management] - Deletes file record
     public void deleteFile(String filename) {
         try (Connection conn = getRemoteConnection()) {
             String sql = "DELETE FROM Files WHERE filename = ?";
@@ -122,7 +126,7 @@ public class DB {
             e.printStackTrace();
         }
     }
-
+// [REQ 4: Access Control Lists] - Updates the permissions string in DB
     public void updateFilePermissions(String filename, String permString) {
         try (Connection conn = getRemoteConnection()) {
             String sql = "UPDATE Files SET permissions = ? WHERE filename = ?";
@@ -134,7 +138,7 @@ public class DB {
             e.printStackTrace();
         }
     }
-
+// [REQ 4: Access Control Lists] - Parses permissions when retrieving files
     public ObservableList<MyFile> getAllFiles() {
         ObservableList<MyFile> files = FXCollections.observableArrayList();
         try (Connection conn = getRemoteConnection()) {
@@ -174,6 +178,7 @@ public class DB {
      * Registers a new user.
      * Returns true if successful, false if username exists.
      */
+    // [REQ 1: User Authentication & Roles] - Registration and Role Assignment
     public boolean registerUser(String user, String password) {
         try (Connection conn = getRemoteConnection()) {
             // Check if table is empty to assign Admin role
@@ -207,7 +212,7 @@ public class DB {
             return false; // FAILED (Other error)
         }
     }
-
+// [REQ 1: User Authentication & Roles] - Verify password hashes
     public boolean login(String user, String pass) {
         try (Connection conn = getRemoteConnection()) {
             String sql = "SELECT password, role FROM Users WHERE name = ?";
@@ -224,7 +229,7 @@ public class DB {
         } catch (Exception e) { e.printStackTrace(); }
         return false;
     }
-
+// [REQ 2: Session Management] - Writes session to local SQLite DB
     private void createLocalSession(String user, String role) {
         try (Connection conn = getLocalConnection()) {
             conn.createStatement().executeUpdate("DELETE FROM Session");
@@ -234,13 +239,13 @@ public class DB {
             pstmt.executeUpdate();
         } catch (SQLException e) { e.printStackTrace(); }
     }
-
+// [REQ 2: Session Management] - Clears session from local SQLite DB
     public void logout() {
         try (Connection conn = getLocalConnection()) {
             conn.createStatement().executeUpdate("DELETE FROM Session");
         } catch (SQLException e) { e.printStackTrace(); }
     }
-
+// [REQ 2: Session Management] - Retrieves the active session
     public User getCurrentSessionUser() {
         try (Connection conn = getLocalConnection()) {
             ResultSet rs = conn.createStatement().executeQuery("SELECT * FROM Session LIMIT 1");
@@ -248,7 +253,7 @@ public class DB {
         } catch (SQLException e) { e.printStackTrace(); }
         return null;
     }
-
+// [REQ 14: Database Synchronisation] - Pulls from Remote MySQL, Updates Local SQLite
     public void syncUsers() {
         ObservableList<User> remoteUsers = FXCollections.observableArrayList();
         try (Connection conn = getRemoteConnection()) {
@@ -305,8 +310,9 @@ public class DB {
         try { File fp = new File(".salt"); if (!fp.exists()) { saltValue = getSaltvalue(30); try (FileWriter myWriter = new FileWriter(fp)) { myWriter.write(saltValue); } } else { try (Scanner myReader = new Scanner(fp)) { while (myReader.hasNextLine()) { saltValue = myReader.nextLine(); } } } } catch (IOException e) { e.printStackTrace(); }
     }
     private String getSaltvalue(int length) { StringBuilder finalval = new StringBuilder(length); for (int i = 0; i < length; i++) { finalval.append(characters.charAt(random.nextInt(characters.length()))); } return finalval.toString(); }
+    // [REQ 6: Encryption] - Cryptographic Hashing for Passwords
     public String generateSecurePassword(String password) throws InvalidKeySpecException { PBEKeySpec spec = new PBEKeySpec(password.toCharArray(), saltValue.getBytes(), iterations, keylength); Arrays.fill(password.toCharArray(), Character.MIN_VALUE); try { SecretKeyFactory skf = SecretKeyFactory.getInstance("PBKDF2WithHmacSHA1"); return Base64.getEncoder().encodeToString(skf.generateSecret(spec).getEncoded()); } catch (NoSuchAlgorithmException e) { throw new AssertionError("Error hashing password: " + e.getMessage(), e); } finally { spec.clearPassword(); } }
-    
+    // [REQ 15: Logging] - Audit logging to persistent text file
     public void logAction(String username, String action, String details) {
         String timestamp = java.time.LocalDateTime.now().toString();
         String logEntry = String.format("[%s] USER: %s | ACTION: %s | DETAILS: %s", 
